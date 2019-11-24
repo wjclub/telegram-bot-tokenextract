@@ -17,7 +17,7 @@ $exp_msg_text = explode(" ",$update['message']['text']);
 if ($exp_msg_text[0] == "/start") {
 	sendMessage($update['message']['chat']['id'],"Hello, \nI can extract the bot token from the ugly message the @botfather sends you...\n\n<b>NOTE: WE DO NOT STORE ANYTHING YOU SEND US (INCLUDING THE TOKEN)!</b>\n\n<i>Source code: </i>https://github.com/wjclub/telegram-bot-tokenextract"); 
 } else {
-	$res = getToken($update['message']['text']);
+	$res = getToken($update['message']);
 	if ($res['ok'] == true) {
 		sendMessage($update['message']['chat']['id'],$res['bot_info']);
 		sendMessage($update['message']['chat']['id'],'<code>'.$res['token'].'</code>');
@@ -41,33 +41,8 @@ function sendMessage($chat_id,$reply){
 	exec($cmd, $output, $exit);
 }
 
-function getToken($token) {
-	$searchstring = "You can use this token to access HTTP API:";
-	$othersearchstring = "Use this token to access the HTTP API:";
-	$endstring = "For a description of the Bot API, see this page: https://core.telegram.org/bots/api";
-	$pos = strpos($token,$searchstring);
-	if ($pos !== FALSE) {
-		$pos += strlen($searchstring) + 1;
-		$length = strpos($token,$endstring);
-		if ($length !== FALSE) {
-			$length -= ($pos + 2);
-			$token = substr($token,$pos,$length);
-		} else {
-			$token = substr($token,$pos);
-		}
-	} else {
-		$pos = strpos($token,$othersearchstring);
-		if ($pos !== FALSE) {
-			$pos += strlen($othersearchstring) + 1;
-			$length = strpos($token,$endstring);
-			if ($length !== FALSE) {
-				$length -= ($pos + 2);
-				$token = substr($token,$pos,$length);
-			} else {
-				$token = substr($token,$pos);
-			}
-		}
-	}
+function getToken($message) {
+	$token = extractToken($message);
 	$bot_info = json_decode(file_get_contents("https://api.telegram.org/bot".$token."/getMe"),true);
 	if ($bot_info['ok'] == true) {
 		$res = [
@@ -82,6 +57,17 @@ function getToken($token) {
 		];
 	}
 	return $res;
+}
+
+function extractToken($message) {
+  if (isset($message["entities"])) {
+    foreach ($message["entities"] as $key => $value) {
+      if ($value["type"] == "code") {
+        return substr($message["text"], $value["offset"], $value["length"]);
+      }
+    }
+  }
+  return NULL;
 }
 
 ?>
